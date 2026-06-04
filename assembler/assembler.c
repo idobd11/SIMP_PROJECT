@@ -5,7 +5,7 @@
 
 #define MAX_LINE 500
 #define MAX_FIELD_LEN 50
-#define MENM_SIZE 4096
+#define MEM_SIZE 4096
 
 /* ============================================
 Structs and globals
@@ -32,7 +32,7 @@ void trim(char str[])
     int end;
     int i = 0;
 
-    while (str[start] == ' ' || str[start] == '\t' || str[start] == '\n' || str[start] == '\r') {
+    while (str[start] != '\0' && str[start] == ' ' || str[start] == '\t' || str[start] == '\n' || str[start] == '\r') {
         start++;
     }
 
@@ -120,6 +120,13 @@ int main(int argc, char* argv[])
     FILE* output;
     char line[MAX_LINE + 1];
 
+    char opcode[MAX_FIELD_LEN] = "";
+    char rd[MAX_FIELD_LEN] = "";
+    char rs[MAX_FIELD_LEN] = "";
+    char rt[MAX_FIELD_LEN] = "";
+    char imm1[MAX_FIELD_LEN] = "";
+    char imm2[MAX_FIELD_LEN] = "";
+
     if (argc != 3) {
         printf("Usage: asm.exe program.asm memin.txt\n");
         return 1;
@@ -147,7 +154,18 @@ int main(int argc, char* argv[])
         if (line[0] == '\0') {
             continue;
         }
-        printf("%s\n", line);
+        if (parse_instruction_line(line, opcode, rd, rs, rt, imm1, imm2)) {
+            printf("opcode = %s\n", opcode);
+            printf("rd     = %s\n", rd);
+            printf("rs     = %s\n", rs);
+            printf("rt     = %s\n", rt);
+            printf("imm1   = %s\n", imm1);
+            printf("imm2   = %s\n", imm2);
+            printf("\n");
+        }
+        else {
+            printf("Could not parse line: %s\n", line);
+        }
 
     }
 
