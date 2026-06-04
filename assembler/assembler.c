@@ -3,7 +3,9 @@
 #include <string.h>
 #include <stdlib.h>
 
-
+#define MAX_LINE 500
+#define MAX_FIELD_LEN 50
+#define MENM_SIZE 4096
 
 /* ============================================
 Structs and globals
@@ -12,6 +14,7 @@ Structs and globals
  /* ============================================
  Utility functions
  ============================================== */
+
 void remove_comment(char line[])
 {
     char* comment_start;
@@ -48,8 +51,50 @@ void trim(char str[])
 
     str[i] = '\0';
 }
+/* ============================================
+ Parser function
+ ============================================== */
+
+int parse_instruction_line(char line[],
+    char opcode[],
+    char rd[],
+    char rs[],
+    char rt[],
+    char imm1[],
+    char imm2[])
+{
+    char* parts[5];
+    char* token;
+    int count = 0;
+
+    token = strtok(line, ",");
+
+    while (token != NULL && count < 5) {
+        trim(token);
+        parts[count] = token;
+        count++;
+
+        token = strtok(NULL, ",");
+    }
+
+    if (count != 5) {
+        return 0;
+    }
+
+    if (sscanf(parts[0], "%s %s", opcode, rd) != 2) {
+        return 0;
+    }
+
+    strcpy(rs, parts[1]);
+    strcpy(rt, parts[2]);
+    strcpy(imm1, parts[3]);
+    strcpy(imm2, parts[4]);
+
+    return 1;
+}
+
  /* ============================================
- SOpcode/register conversion
+ Opcode/register conversion
  ============================================== */
 
  /* ============================================
@@ -73,7 +118,7 @@ int main(int argc, char* argv[])
 {
     FILE* input;
     FILE* output;
-    char line[501];
+    char line[MAX_LINE + 1];
 
     if (argc != 3) {
         printf("Usage: asm.exe program.asm memin.txt\n");
@@ -95,14 +140,13 @@ int main(int argc, char* argv[])
 
     printf("Successfully opened all files! Ready to parse...\n");
 
-    while (fgets(line, 501, input) != NULL){
+    while (fgets(line, MAX_LINE + 1, input) != NULL){
         remove_comment(line);
         trim(line);
 
         if (line[0] == '\0') {
             continue;
         }
-
         printf("%s\n", line);
 
     }
