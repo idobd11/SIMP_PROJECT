@@ -12,7 +12,16 @@ Structs and globals
  /* ============================================
  Utility functions
  ============================================== */
+void remove_comment(char line[])
+{
+    char* comment_start;
 
+    comment_start = strchr(line, '#');
+
+    if (comment_start != NULL) {
+        *comment_start = '\0';
+    }
+}
  /* ============================================
  SOpcode/register conversion
  ============================================== */
@@ -58,12 +67,15 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    while (fgets(line, 501, input) != NULL) {
-        printf("%s", line);
+    printf("Successfully opened all files! Ready to parse...\n");
+
+    while (fgets(line, 501, input) != NULL){
+        remove_comment(line);
+        printf("%s\n", line);
     }
 
-    printf("Succesfully opened all files! Ready to parse...\n");
-
+   
+   
     fclose(input);
     fclose(output);
 
