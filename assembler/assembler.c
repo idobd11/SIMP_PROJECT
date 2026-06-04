@@ -22,6 +22,32 @@ void remove_comment(char line[])
         *comment_start = '\0';
     }
 }
+
+void trim(char str[])
+{
+    int start = 0;
+    int end;
+    int i = 0;
+
+    while (str[start] == ' ' || str[start] == '\t' || str[start] == '\n' || str[start] == '\r') {
+        start++;
+    }
+
+    end = (int)strlen(str) - 1;
+
+    while (end >= start &&
+        (str[end] == ' ' || str[end] == '\t' || str[end] == '\n' || str[end] == '\r')) {
+        end--;
+    }
+
+    while (start <= end) {
+        str[i] = str[start];
+        i++;
+        start++;
+    }
+
+    str[i] = '\0';
+}
  /* ============================================
  SOpcode/register conversion
  ============================================== */
@@ -71,10 +97,17 @@ int main(int argc, char* argv[])
 
     while (fgets(line, 501, input) != NULL){
         remove_comment(line);
+        trim(line);
+
+        if (line[0] == '\0') {
+            continue;
+        }
+
         printf("%s\n", line);
+
     }
 
-   
+  
    
     fclose(input);
     fclose(output);
