@@ -254,12 +254,15 @@ int main(int argc, char* argv[])
 
             encoded_instruction = encode_instruction(opcode_num, rd_num, rs_num, rt_num, imm1_num);
 
+            fprintf(output, "%08X\n", encoded_instruction);
+
             printf("opcode = %s -> %d\n", opcode, opcode_num);
             printf("rd     = %s -> %d\n", rd, rd_num);
             printf("rs     = %s -> %d\n", rs, rs_num);
             printf("rt     = %s -> %d\n", rt, rt_num);
             printf("imm1   = %s -> %ld\n", imm1, imm1_num);
             printf("imm2   = %s -> %ld\n", imm2, imm2_num);
+            printf("encoded = %08X\n", encoded_instruction);
             printf("\n");
         }
         else {
