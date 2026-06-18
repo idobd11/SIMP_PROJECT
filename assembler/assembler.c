@@ -11,9 +11,9 @@
 Structs and globals
 ============================================== */
 
- /* ============================================
+/* ============================================
  Utility functions
- ============================================== */
+============================================== */
 
 void remove_comment(char line[])
 {
@@ -96,7 +96,45 @@ int parse_instruction_line(char line[],
  /* ============================================
  Opcode/register conversion
  ============================================== */
+#define NUM_REGISTERS 16
+#define NUM_OPCODES 23
 
+const char* registers[NUM_REGISTERS] = {
+    "$zero", "$imm1", "$imm2", "$v0", "$a0", "$a1", "$a2", "$a3",
+    "$t0", "$t1", "$t2", "$s0", "$s1", "$gp", "$sp", "$ra"
+};
+
+const char* opcodes[NUM_OPCODES] = {
+    "add", "sub", "mul", "mac", "and", "or", "xor", "sll",
+    "sra", "srl", "beq", "bne", "blt", "bgt", "ble", "bge",
+    "jal", "lw", "sw", "reti", "in", "out", "halt"
+};
+
+int get_register_number(const char* reg_name)
+{
+    int i;
+
+    for (i = 0; i < NUM_REGISTERS; i++) {
+        if (strcmp(reg_name, registers[i]) == 0) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+int get_opcode_number(const char* op_name)
+{
+    int i;
+
+    for (i = 0; i < NUM_OPCODES; i++) {
+        if (strcmp(op_name, opcodes[i]) == 0) {
+            return i;
+        }
+    }
+
+    return -1;
+}
  /* ============================================
  Labels / Symbols
  ============================================== */
@@ -127,6 +165,11 @@ int main(int argc, char* argv[])
     char imm1[MAX_FIELD_LEN] = "";
     char imm2[MAX_FIELD_LEN] = "";
 
+    int opcode_num;
+    int rd_num;
+    int rs_num;
+    int rt_num;
+
     if (argc != 3) {
         printf("Usage: asm.exe program.asm memin.txt\n");
         return 1;
@@ -155,10 +198,15 @@ int main(int argc, char* argv[])
             continue;
         }
         if (parse_instruction_line(line, opcode, rd, rs, rt, imm1, imm2)) {
-            printf("opcode = %s\n", opcode);
-            printf("rd     = %s\n", rd);
-            printf("rs     = %s\n", rs);
-            printf("rt     = %s\n", rt);
+            opcode_num = get_opcode_number(opcode);
+            rd_num = get_register_number(rd);
+            rs_num = get_register_number(rs);
+            rt_num = get_register_number(rt);
+
+            printf("opcode = %s -> %d\n", opcode, opcode_num);
+            printf("rd     = %s -> %d\n", rd, rd_num);
+            printf("rs     = %s -> %d\n", rs, rs_num);
+            printf("rt     = %s -> %d\n", rt, rt_num);
             printf("imm1   = %s\n", imm1);
             printf("imm2   = %s\n", imm2);
             printf("\n");
@@ -168,8 +216,6 @@ int main(int argc, char* argv[])
         }
 
     }
-
-  
    
     fclose(input);
     fclose(output);
