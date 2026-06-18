@@ -32,7 +32,8 @@ void trim(char str[])
     int end;
     int i = 0;
 
-    while (str[start] != '\0' && str[start] == ' ' || str[start] == '\t' || str[start] == '\n' || str[start] == '\r') {
+    while (str[start] != '\0' &&
+        (str[start] == ' ' || str[start] == '\t' || str[start] == '\n' || str[start] == '\r')) {
         start++;
     }
 
@@ -50,6 +51,25 @@ void trim(char str[])
     }
 
     str[i] = '\0';
+}
+
+int parse_number(const char* str, long* value)
+{
+    char* endptr;
+    long result;
+
+    result = strtol(str, &endptr, 0);
+
+    if (endptr == str) {
+        return 0; /* no number was read */
+    }
+
+    if (*endptr != '\0') {
+        return 0; /* extra invalid characters */
+    }
+
+    *value = result;
+    return 1;
 }
 /* ============================================
  Parser function
@@ -92,6 +112,7 @@ int parse_instruction_line(char line[],
 
     return 1;
 }
+
 
  /* ============================================
  Opcode/register conversion
@@ -147,6 +168,19 @@ int get_opcode_number(const char* op_name)
  encoding functions 
  ============================================== */
 
+unsigned int encode_instruction(int opcode, int rd, int rs, int rt, long imm1)
+{
+    unsigned int inst = 0;
+
+    inst |= ((unsigned int)opcode & 0xFF) << 24;
+    inst |= ((unsigned int)rd & 0xF) << 20;
+    inst |= ((unsigned int)rs & 0xF) << 16;
+    inst |= ((unsigned int)rt & 0xF) << 12;
+    inst |= ((unsigned int)imm1 & 0xFFF);
+
+    return inst;
+}
+
  /* ============================================
  Main
  ============================================== */
@@ -169,6 +203,11 @@ int main(int argc, char* argv[])
     int rd_num;
     int rs_num;
     int rt_num;
+
+    long imm1_num;
+    long imm2_num;
+
+    unsigned int encoded_instruction;
 
     if (argc != 3) {
         printf("Usage: asm.exe program.asm memin.txt\n");
@@ -203,12 +242,24 @@ int main(int argc, char* argv[])
             rs_num = get_register_number(rs);
             rt_num = get_register_number(rt);
 
+            if (!parse_number(imm1, &imm1_num)) {
+                printf("Invalid imm1: %s\n", imm1);
+                continue;
+            }
+
+            if (!parse_number(imm2, &imm2_num)) {
+                printf("Invalid imm2: %s\n", imm2);
+                continue;
+            }
+
+            encoded_instruction = encode_instruction(opcode_num, rd_num, rs_num, rt_num, imm1_num);
+
             printf("opcode = %s -> %d\n", opcode, opcode_num);
             printf("rd     = %s -> %d\n", rd, rd_num);
             printf("rs     = %s -> %d\n", rs, rs_num);
             printf("rt     = %s -> %d\n", rt, rt_num);
-            printf("imm1   = %s\n", imm1);
-            printf("imm2   = %s\n", imm2);
+            printf("imm1   = %s -> %ld\n", imm1, imm1_num);
+            printf("imm2   = %s -> %ld\n", imm2, imm2_num);
             printf("\n");
         }
         else {
