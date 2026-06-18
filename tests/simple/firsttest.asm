@@ -5,3 +5,5 @@ add $t1, $zero, $imm1, 7, 0        # put 7 in t1
 
    add $t2, $t0, $t1, 0, 0
 halt $zero, $zero, $zero, 0, 0
+
+add $t0, $zero, $imm2, 0, 0x12345678

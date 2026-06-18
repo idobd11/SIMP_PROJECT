@@ -256,6 +256,10 @@ int main(int argc, char* argv[])
 
             fprintf(output, "%08X\n", encoded_instruction);
 
+            if (rd_num == 2 || rs_num == 2 || rt_num == 2) {
+                fprintf(output, "%08X\n", (unsigned int)imm2_num);
+            }
+
             printf("opcode = %s -> %d\n", opcode, opcode_num);
             printf("rd     = %s -> %d\n", rd, rd_num);
             printf("rs     = %s -> %d\n", rs, rs_num);
