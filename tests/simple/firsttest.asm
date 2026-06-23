@@ -1,9 +1,10 @@
 # simple test file for assembler
 
-   add $t0, $zero, $imm1, 5, 0     # put 5 in t0
-add $t1, $zero, $imm1, 7, 0        # put 7 in t1
+start:
+   add $t0, $zero, $imm1, 5, 0
+add $t1, $zero, $imm1, 7, 0
 
-   add $t2, $t0, $t1, 0, 0
+middle: add $t2, $t0, $t1, 0, 0
 halt $zero, $zero, $zero, 0, 0
 
-add $t0, $zero, $imm2, 0, 0x12345678
+bigconst: add $t0, $zero, $imm2, 0, 0x12345678

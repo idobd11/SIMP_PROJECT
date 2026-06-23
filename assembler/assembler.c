@@ -6,10 +6,17 @@
 #define MAX_LINE 500
 #define MAX_FIELD_LEN 50
 #define MEM_SIZE 4096
+#define MAX_LABELS 500
+
 
 /* ============================================
 Structs and globals
 ============================================== */
+
+typedef struct {
+    char name[MAX_FIELD_LEN];
+    int address;
+} Label;
 
 /* ============================================
  Utility functions
@@ -160,6 +167,158 @@ int get_opcode_number(const char* op_name)
  Labels / Symbols
  ============================================== */
 
+int is_label_definition(char line[])
+{
+    char* colon;
+
+    colon = strchr(line, ':');
+
+    if (colon != NULL) {
+        return 1;
+    }
+
+    return 0;
+}
+
+void extract_label_name(char line[], char label_name[])
+{
+    char* colon;
+    int len;
+
+    colon = strchr(line, ':');
+
+    if (colon == NULL) {
+        label_name[0] = '\0';
+        return;
+    }
+
+    len = (int)(colon - line);
+
+    strncpy(label_name, line, len);
+    label_name[len] = '\0';
+
+    trim(label_name);
+}
+
+void remove_label_from_line(char line[])
+{
+    char* colon;
+    char temp[MAX_LINE + 1];
+
+    colon = strchr(line, ':');
+
+    if (colon == NULL) {
+        return;
+    }
+
+    strcpy(temp, colon + 1);
+    trim(temp);
+    strcpy(line, temp);
+}
+
+int find_label(Label labels[], int label_count, const char* name)
+{
+    int i;
+
+    for (i = 0; i < label_count; i++) {
+        if (strcmp(labels[i].name, name) == 0) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+int add_label(Label labels[], int* label_count, const char* name, int address)
+{
+    if (*label_count >= MAX_LABELS) {
+        return 0;
+    }
+
+    if (find_label(labels, *label_count, name) != -1) {
+        return 0;
+    }
+
+    strcpy(labels[*label_count].name, name);
+    labels[*label_count].address = address;
+    (*label_count)++;
+
+    return 1;
+}
+
+int first_pass(FILE* input, Label labels[], int* label_count)
+{
+    char line[MAX_LINE + 1];
+    char label_name[MAX_FIELD_LEN];
+
+    char opcode[MAX_FIELD_LEN];
+    char rd[MAX_FIELD_LEN];
+    char rs[MAX_FIELD_LEN];
+    char rt[MAX_FIELD_LEN];
+    char imm1[MAX_FIELD_LEN];
+    char imm2[MAX_FIELD_LEN];
+
+    int pc;
+    int rd_num;
+    int rs_num;
+    int rt_num;
+
+    pc = 0;
+
+    while (fgets(line, MAX_LINE + 1, input) != NULL) {
+        remove_comment(line);
+        trim(line);
+
+        if (line[0] == '\0') {
+            continue;
+        }
+
+        if (is_label_definition(line)) {
+            extract_label_name(line, label_name);
+
+            if (label_name[0] != '\0') {
+                if (!add_label(labels, label_count, label_name, pc)) {
+                    printf("Error: duplicate label or too many labels: %s\n", label_name);
+                    return 0;
+                }
+            }
+
+            remove_label_from_line(line);
+
+            if (line[0] == '\0') {
+                continue;
+            }
+        }
+
+        /* Directives will be handled later */
+        if (line[0] == '.') {
+            continue;
+        }
+
+        if (!parse_instruction_line(line, opcode, rd, rs, rt, imm1, imm2)) {
+            printf("Pass 1 parse error: %s\n", line);
+            return 0;
+        }
+
+        rd_num = get_register_number(rd);
+        rs_num = get_register_number(rs);
+        rt_num = get_register_number(rt);
+
+        if (rd_num == -1 || rs_num == -1 || rt_num == -1) {
+            printf("Pass 1 register error\n");
+            return 0;
+        }
+
+        pc++;
+
+        if (rd_num == 2 || rs_num == 2 || rt_num == 2) {
+            pc++;
+        }
+    }
+
+    return 1;
+}
+
  /* ============================================
  .word/.array 
  ============================================== */
@@ -195,6 +354,9 @@ int main(int argc, char* argv[])
     unsigned int memory[MEM_SIZE] = { 0 };
     int pc = 0;
     int i;
+
+    Label labels[MAX_LABELS];
+    int label_count = 0;
 
     char opcode[MAX_FIELD_LEN] = "";
     char rd[MAX_FIELD_LEN] = "";
@@ -233,6 +395,20 @@ int main(int argc, char* argv[])
 
     printf("Successfully opened all files! Ready to parse...\n");
 
+    if (!first_pass(input, labels, &label_count)) {
+        fclose(input);
+        fclose(output);
+        return 1;
+    }
+
+    printf("Labels found:\n");
+    for (i = 0; i < label_count; i++) {
+        printf("%s -> %d\n", labels[i].name, labels[i].address);
+    }
+
+    rewind(input);
+    pc = 0;
+
     while (fgets(line, MAX_LINE + 1, input) != NULL){
         remove_comment(line);
         trim(line);
@@ -240,6 +416,14 @@ int main(int argc, char* argv[])
         if (line[0] == '\0') {
             continue;
         }
+        if (is_label_definition(line)) {
+            remove_label_from_line(line);
+
+            if (line[0] == '\0') {
+                continue;
+            }
+        }
+
         if (parse_instruction_line(line, opcode, rd, rs, rt, imm1, imm2)) {
             opcode_num = get_opcode_number(opcode);
             rd_num = get_register_number(rd);
