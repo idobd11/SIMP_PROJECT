@@ -192,6 +192,10 @@ int main(int argc, char* argv[])
     FILE* output;
     char line[MAX_LINE + 1];
 
+    unsigned int memory[MEM_SIZE] = { 0 };
+    int pc = 0;
+    int i;
+
     char opcode[MAX_FIELD_LEN] = "";
     char rd[MAX_FIELD_LEN] = "";
     char rs[MAX_FIELD_LEN] = "";
@@ -254,10 +258,12 @@ int main(int argc, char* argv[])
 
             encoded_instruction = encode_instruction(opcode_num, rd_num, rs_num, rt_num, imm1_num);
 
-            fprintf(output, "%08X\n", encoded_instruction);
+            memory[pc] = encoded_instruction;
+            pc++;
 
             if (rd_num == 2 || rs_num == 2 || rt_num == 2) {
-                fprintf(output, "%08X\n", (unsigned int)imm2_num);
+                memory[pc] = (unsigned int)imm2_num;
+                pc++;
             }
 
             printf("opcode = %s -> %d\n", opcode, opcode_num);
@@ -275,6 +281,9 @@ int main(int argc, char* argv[])
 
     }
    
+    for (i = 0; i < pc; i++) {
+        fprintf(output, "%08X\n", memory[i]);
+    }
     fclose(input);
     fclose(output);
 
