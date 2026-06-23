@@ -246,6 +246,24 @@ int add_label(Label labels[], int* label_count, const char* name, int address)
     return 1;
 }
 
+int resolve_immediate(const char* imm, Label labels[], int label_count, long* value)
+{
+    int label_index;
+
+    if (parse_number(imm, value)) {
+        return 1;
+    }
+
+    label_index = find_label(labels, label_count, imm);
+
+    if (label_index != -1) {
+        *value = labels[label_index].address;
+        return 1;
+    }
+
+    return 0;
+}
+
 int first_pass(FILE* input, Label labels[], int* label_count)
 {
     char line[MAX_LINE + 1];
@@ -430,13 +448,13 @@ int main(int argc, char* argv[])
             rs_num = get_register_number(rs);
             rt_num = get_register_number(rt);
 
-            if (!parse_number(imm1, &imm1_num)) {
-                printf("Invalid imm1: %s\n", imm1);
+            if (!resolve_immediate(imm1, labels, label_count, &imm1_num)) {
+                printf("Invalid imm1 or unknown label: %s\n", imm1);
                 continue;
             }
 
-            if (!parse_number(imm2, &imm2_num)) {
-                printf("Invalid imm2: %s\n", imm2);
+            if (!resolve_immediate(imm2, labels, label_count, &imm2_num)) {
+                printf("Invalid imm2 or unknown label: %s\n", imm2);
                 continue;
             }
 
