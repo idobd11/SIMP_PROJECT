@@ -9,3 +9,4 @@ beq $zero, $zero, $zero, middle, 0
 halt $zero, $zero, $zero, 0, 0
 beq $zero, $zero, $zero, start, 0
 bigconst: add $t0, $zero, $imm2, 0, 0x12345678
+.word 8 0x11111111

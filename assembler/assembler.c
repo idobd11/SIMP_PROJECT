@@ -341,6 +341,44 @@ int first_pass(FILE* input, Label labels[], int* label_count)
  .word/.array 
  ============================================== */
 
+int handle_word(char line[], unsigned int memory[], int* max_address)
+{
+    char directive[MAX_FIELD_LEN];
+    char address_str[MAX_FIELD_LEN];
+    char data_str[MAX_FIELD_LEN];
+
+    long address;
+    long data;
+
+    if (sscanf(line, "%s %s %s", directive, address_str, data_str) != 3) {
+        return 0;
+    }
+
+    if (strcmp(directive, ".word") != 0) {
+        return 0;
+    }
+
+    if (!parse_number(address_str, &address)) {
+        return 0;
+    }
+
+    if (!parse_number(data_str, &data)) {
+        return 0;
+    }
+
+    if (address < 0 || address >= MEM_SIZE) {
+        return 0;
+    }
+
+    memory[(int)address] = (unsigned int)data;
+
+    if ((int)address + 1 > *max_address) {
+        *max_address = (int)address + 1;
+    }
+
+    return 1;
+}
+
  /* ============================================
  encoding functions 
  ============================================== */
@@ -372,6 +410,7 @@ int main(int argc, char* argv[])
     unsigned int memory[MEM_SIZE] = { 0 };
     int pc = 0;
     int i;
+    int max_address = 0;
 
     Label labels[MAX_LABELS];
     int label_count = 0;
@@ -442,6 +481,15 @@ int main(int argc, char* argv[])
             }
         }
 
+        if (strncmp(line, ".word", 5) == 0) {
+            if (!handle_word(line, memory, &max_address)) {
+                printf("Invalid .word directive: %s\n", line);
+                continue;
+            }
+
+            continue;
+        }
+
         if (parse_instruction_line(line, opcode, rd, rs, rt, imm1, imm2)) {
             opcode_num = get_opcode_number(opcode);
             rd_num = get_register_number(rd);
@@ -463,9 +511,17 @@ int main(int argc, char* argv[])
             memory[pc] = encoded_instruction;
             pc++;
 
+            if (pc > max_address) {
+                max_address = pc;
+            }
+
             if (rd_num == 2 || rs_num == 2 || rt_num == 2) {
                 memory[pc] = (unsigned int)imm2_num;
                 pc++;
+
+                if (pc > max_address) {
+                    max_address = pc;
+                }
             }
 
             printf("opcode = %s -> %d\n", opcode, opcode_num);
@@ -483,7 +539,7 @@ int main(int argc, char* argv[])
 
     }
    
-    for (i = 0; i < pc; i++) {
+    for (i = 0; i < max_address; i++) {
         fprintf(output, "%08X\n", memory[i]);
     }
     fclose(input);
