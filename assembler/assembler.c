@@ -60,24 +60,41 @@ void trim(char str[])
     str[i] = '\0';
 }
 
-int parse_number(const char* str, long* value)
+int parse_number(const char* str, unsigned int* value)
 {
     char* endptr;
-    long result;
+    unsigned long unsigned_result;
+    long signed_result;
 
-    result = strtol(str, &endptr, 0);
+    if (str[0] == '-') {
+        signed_result = strtol(str, &endptr, 0);
+
+        if (endptr == str) {
+            return 0;
+        }
+
+        if (*endptr != '\0') {
+            return 0;
+        }
+
+        *value = (unsigned int)signed_result;
+        return 1;
+    }
+
+    unsigned_result = strtoul(str, &endptr, 0);
 
     if (endptr == str) {
-        return 0; /* no number was read */
+        return 0;
     }
 
     if (*endptr != '\0') {
-        return 0; /* extra invalid characters */
+        return 0;
     }
 
-    *value = result;
+    *value = (unsigned int)unsigned_result;
     return 1;
 }
+
 /* ============================================
  Parser function
  ============================================== */
@@ -246,7 +263,7 @@ int add_label(Label labels[], int* label_count, const char* name, int address)
     return 1;
 }
 
-int resolve_immediate(const char* imm, Label labels[], int label_count, long* value)
+int resolve_immediate(const char* imm, Label labels[], int label_count, unsigned int* value)
 {
     int label_index;
 
@@ -257,7 +274,7 @@ int resolve_immediate(const char* imm, Label labels[], int label_count, long* va
     label_index = find_label(labels, label_count, imm);
 
     if (label_index != -1) {
-        *value = labels[label_index].address;
+        *value = (unsigned int)labels[label_index].address;
         return 1;
     }
 
@@ -378,12 +395,74 @@ int handle_word(char line[], unsigned int memory[], int* max_address)
 
     return 1;
 }
+int handle_array(char line[], unsigned int memory[], int* max_address)
+{
+    char directive[MAX_FIELD_LEN];
+    char address_str[MAX_FIELD_LEN];
+    char data_part[MAX_LINE + 1];
+
+    char* token;
+    unsigned int address;
+    unsigned int data;
+    int current_address;
+
+    if (sscanf(line, "%s %s %[^\n]", directive, address_str, data_part) != 3) {
+        return 0;
+    }
+
+    if (strcmp(directive, ".array") != 0) {
+        return 0;
+    }
+
+    if (!parse_number(address_str, &address)) {
+        return 0;
+    }
+
+    if (address < 0 || address >= MEM_SIZE) {
+        return 0;
+    }
+
+    current_address = (int)address;
+
+    token = strtok(data_part, ",");
+
+    if (token == NULL) {
+        return 0;
+    }
+
+    while (token != NULL) {
+        trim(token);
+
+        if (token[0] == '\0') {
+            return 0;
+        }
+
+        if (!parse_number(token, &data)) {
+            return 0;
+        }
+
+        if (current_address < 0 || current_address >= MEM_SIZE) {
+            return 0;
+        }
+
+        memory[current_address] = (unsigned int)data;
+        current_address++;
+
+        token = strtok(NULL, ",");
+    }
+
+    if (current_address > *max_address) {
+        *max_address = current_address;
+    }
+
+    return 1;
+}
 
  /* ============================================
  encoding functions 
  ============================================== */
 
-unsigned int encode_instruction(int opcode, int rd, int rs, int rt, long imm1)
+unsigned int encode_instruction(int opcode, int rd, int rs, int rt, unsigned int imm1)
 {
     unsigned int inst = 0;
 
@@ -427,8 +506,8 @@ int main(int argc, char* argv[])
     int rs_num;
     int rt_num;
 
-    long imm1_num;
-    long imm2_num;
+    unsigned int imm1_num;
+    unsigned int imm2_num;
 
     unsigned int encoded_instruction;
 
@@ -490,6 +569,15 @@ int main(int argc, char* argv[])
             continue;
         }
 
+        if (strncmp(line, ".array", 6) == 0) {
+            if (!handle_array(line, memory, &max_address)) {
+                printf("Invalid .array directive: %s\n", line);
+                continue;
+            }
+
+            continue;
+        }
+
         if (parse_instruction_line(line, opcode, rd, rs, rt, imm1, imm2)) {
             opcode_num = get_opcode_number(opcode);
             rd_num = get_register_number(rd);
@@ -528,8 +616,8 @@ int main(int argc, char* argv[])
             printf("rd     = %s -> %d\n", rd, rd_num);
             printf("rs     = %s -> %d\n", rs, rs_num);
             printf("rt     = %s -> %d\n", rt, rt_num);
-            printf("imm1   = %s -> %ld\n", imm1, imm1_num);
-            printf("imm2   = %s -> %ld\n", imm2, imm2_num);
+            printf("imm1   = %s -> %08X\n", imm1, imm1_num);
+            printf("imm2   = %s -> %08X\n", imm2, imm2_num);
             printf("encoded = %08X\n", encoded_instruction);
             printf("\n");
         }
