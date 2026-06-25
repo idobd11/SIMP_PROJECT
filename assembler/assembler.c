@@ -22,6 +22,9 @@ typedef struct {
  Utility functions
 ============================================== */
 
+/* Removes everything after the first '#' character in a line.
+ * Used to ignore comments in the assembly input file. */
+
 void remove_comment(char line[])
 {
     char* comment_start;
@@ -32,6 +35,8 @@ void remove_comment(char line[])
         *comment_start = '\0';
     }
 }
+
+/* Removes whitespaces from a string */
 
 void trim(char str[])
 {
@@ -59,6 +64,8 @@ void trim(char str[])
 
     str[i] = '\0';
 }
+/* Parses a numeric string into a 32-bit unsigned value.
+   Supports decimal and hex numbers. */
 
 int parse_number(const char* str, unsigned int* value)
 {
@@ -99,6 +106,10 @@ int parse_number(const char* str, unsigned int* value)
  Parser function
  ============================================== */
 
+/* Parses an instruction line into its six fields: 
+   opcode, rd, rs, rt, imm1, imm2 
+   returns 1 if successful, 0 if unsuccessful */
+
 int parse_instruction_line(char line[],
     char opcode[],
     char rd[],
@@ -137,7 +148,6 @@ int parse_instruction_line(char line[],
     return 1;
 }
 
-
  /* ============================================
  Opcode/register conversion
  ============================================== */
@@ -155,6 +165,8 @@ const char* opcodes[NUM_OPCODES] = {
     "jal", "lw", "sw", "reti", "in", "out", "halt"
 };
 
+/* Converts a string containing the register's name into its index */
+
 int get_register_number(const char* reg_name)
 {
     int i;
@@ -167,6 +179,8 @@ int get_register_number(const char* reg_name)
 
     return -1;
 }
+
+/* Converts opcode string to its value */
 
 int get_opcode_number(const char* op_name)
 {
@@ -184,6 +198,8 @@ int get_opcode_number(const char* op_name)
  Labels / Symbols
  ============================================== */
 
+/* Checks if a lines contains a label definition. Identified by the char ':'. */
+
 int is_label_definition(char line[])
 {
     char* colon;
@@ -196,6 +212,9 @@ int is_label_definition(char line[])
 
     return 0;
 }
+
+/* Extracts the label name from a line containing a label that ends with ':',
+   without ':'. */
 
 void extract_label_name(char line[], char label_name[])
 {
@@ -217,6 +236,8 @@ void extract_label_name(char line[], char label_name[])
     trim(label_name);
 }
 
+/* Removes a label from a line, keeping only the instruction. */
+
 void remove_label_from_line(char line[])
 {
     char* colon;
@@ -233,6 +254,8 @@ void remove_label_from_line(char line[])
     strcpy(line, temp);
 }
 
+/* Searches for a label by name in the labels table, returns index if found and -1 if not found */
+
 int find_label(Label labels[], int label_count, const char* name)
 {
     int i;
@@ -245,6 +268,10 @@ int find_label(Label labels[], int label_count, const char* name)
 
     return -1;
 }
+
+/* Adds a new label and its address to the labels table.
+   Fails if the table is full or the label already exists. 
+   Returns 1 on success, 0 on failure */
 
 int add_label(Label labels[], int* label_count, const char* name, int address)
 {
@@ -263,6 +290,10 @@ int add_label(Label labels[], int* label_count, const char* name, int address)
     return 1;
 }
 
+/* Resolves an immediate into a numeric value 
+   Immediate could be a number or a label.
+   If it is a label, the label address is used */
+
 int resolve_immediate(const char* imm, Label labels[], int label_count, unsigned int* value)
 {
     int label_index;
@@ -280,6 +311,10 @@ int resolve_immediate(const char* imm, Label labels[], int label_count, unsigned
 
     return 0;
 }
+
+/* Performs the first pass over the .asm file. 
+   Collects all label definitions and stores their addresses
+   a local address is advanced according to the number of words each instruction occupies. */
 
 int first_pass(FILE* input, Label labels[], int* label_count)
 {
@@ -358,14 +393,18 @@ int first_pass(FILE* input, Label labels[], int* label_count)
  .word/.array 
  ============================================== */
 
+/* Handles .word 
+    writes the data directly to memory[address] 
+    updates max_address if needed. */
+
 int handle_word(char line[], unsigned int memory[], int* max_address)
 {
     char directive[MAX_FIELD_LEN];
     char address_str[MAX_FIELD_LEN];
     char data_str[MAX_FIELD_LEN];
 
-    long address;
-    long data;
+    unsigned int address;
+    unsigned int data;
 
     if (sscanf(line, "%s %s %s", directive, address_str, data_str) != 3) {
         return 0;
@@ -383,7 +422,7 @@ int handle_word(char line[], unsigned int memory[], int* max_address)
         return 0;
     }
 
-    if (address < 0 || address >= MEM_SIZE) {
+    if (address >= MEM_SIZE) {
         return 0;
     }
 
@@ -395,6 +434,9 @@ int handle_word(char line[], unsigned int memory[], int* max_address)
 
     return 1;
 }
+
+/* Handles .array. writes the data to consecutive memory addresses starting at the given address */
+
 int handle_array(char line[], unsigned int memory[], int* max_address)
 {
     char directive[MAX_FIELD_LEN];
@@ -462,6 +504,17 @@ int handle_array(char line[], unsigned int memory[], int* max_address)
  encoding functions 
  ============================================== */
 
+ /*
+  * Encodes an instruction into a 32-bit machine word.
+  * The instruction format is:
+  * bits 31-24: opcode
+  * bits 23-20: rd
+  * bits 19-16: rs
+  * bits 15-12: rt
+  * bits 11-0 : imm1
+  * Only the lower 12 bits of imm1 are encoded.
+  */
+
 unsigned int encode_instruction(int opcode, int rd, int rs, int rt, unsigned int imm1)
 {
     unsigned int inst = 0;
@@ -479,6 +532,13 @@ unsigned int encode_instruction(int opcode, int rd, int rs, int rt, unsigned int
  Main
  ============================================== */
 
+ /*
+  * Main assembler flow:
+  * 1. Open input .asm file and output memin.txt file.
+  * 2. First pass: collect labels and their addresses.
+  * 3. Second pass: parse and encode instructions/directives into memory.
+  * 4. Write the memory image to memin.txt.
+  */
 
 int main(int argc, char* argv[])
 {
@@ -529,17 +589,10 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    printf("Successfully opened all files! Ready to parse...\n");
-
     if (!first_pass(input, labels, &label_count)) {
         fclose(input);
         fclose(output);
         return 1;
-    }
-
-    printf("Labels found:\n");
-    for (i = 0; i < label_count; i++) {
-        printf("%s -> %d\n", labels[i].name, labels[i].address);
     }
 
     rewind(input);
@@ -611,15 +664,6 @@ int main(int argc, char* argv[])
                     max_address = pc;
                 }
             }
-
-            printf("opcode = %s -> %d\n", opcode, opcode_num);
-            printf("rd     = %s -> %d\n", rd, rd_num);
-            printf("rs     = %s -> %d\n", rs, rs_num);
-            printf("rt     = %s -> %d\n", rt, rt_num);
-            printf("imm1   = %s -> %08X\n", imm1, imm1_num);
-            printf("imm2   = %s -> %08X\n", imm2, imm2_num);
-            printf("encoded = %08X\n", encoded_instruction);
-            printf("\n");
         }
         else {
             printf("Could not parse line: %s\n", line);
