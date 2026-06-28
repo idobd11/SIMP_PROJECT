@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 #define MAX_LINE 500
-#define MAX_FIELD_LEN 50
+#define MAX_FIELD_LEN 51
 #define MEM_SIZE 4096
 #define MAX_LABELS 500
 
